@@ -34,29 +34,18 @@ GUILD_ID = 1342974632524775526
 # Moderation roles allowed
 
 ALLOWED_ROLES = {
-    1402418357596061756,
-    1402418713612910663,
-    1403013958562218054,
-    1342974632524775528,
-    1405597740494356631,
-    1402419665808134395,
+   1149718619207512119
 }
 
 UNBAN_ROLES = {
-    1402418357596061756,
-    1402418713612910663,
-    1403013958562218054,
-    1342974632524775527,
-    1342974632524775528,
-    1405597740494356631,
-    1402419665808134395,
+    1149718619207512119
 }
 
 LOG_CHANNELS = {
-    "ban": 1405586824847556769,
-    "kick": 1405586854442569749,
-    "warn": 1406995238404231299,
-    "unban": 1405587917287587860,
+    "ban": 1150282902299484200,
+    "kick": 1150282902299484200,
+    "warn": 1150282902299484200,
+    "unban": 1150282902299484200,
 }
 
 # ------------------- Bot -------------------
@@ -123,11 +112,7 @@ class EmbedModal(Modal, title="Maak een Embed"):
 @bot.tree.command(name="embed", description="Maak een embed via formulier", guild=discord.Object(id=GUILD_ID))
 async def embed_cmd(interaction: discord.Interaction):
     allowed_roles = {
-        1402418713612910663,
-        1403013958562218054,
-        1342974632524775528,
-        1405597740494356631,
-        1402419665808134395
+        1149718619207512119
     }
     if not any(r.id in allowed_roles for r in interaction.user.roles):
         await interaction.response.send_message("❌ Je hebt geen toegang tot dit commando.", ephemeral=True)
@@ -267,8 +252,7 @@ class RoleEmbedModal(Modal, title="Maak een Role Embed"):
     guild=discord.Object(id=GUILD_ID)
 )
 async def roleembed(interaction: discord.Interaction):
-    allowed_roles = {1402418713612910663, 1403013958562218054, 1342974632524775528,
-                     1405597740494356631, 1402419665808134395}
+    allowed_roles = {1149718619207512119}
     if not any(r.id in allowed_roles for r in interaction.user.roles):
         await interaction.response.send_message("❌ Je hebt geen toegang tot dit commando.", ephemeral=True)
         return
@@ -561,13 +545,7 @@ async def moderatie(interaction: discord.Interaction):
 
 # ✅ Rol-IDs die mogen
 ALLOWED_ROLES = {
-    1402418357596061756,
-    1402418713612910663,
-    1403013958562218054,
-    1342974632524775527,
-    1342974632524775528,
-    1405597740494356631,
-    1402419665808134395
+    1149718619207512119
 }
 
 def has_allowed_role(interaction: discord.Interaction) -> bool:
@@ -643,13 +621,7 @@ async def listbans(interaction: discord.Interaction, limit: int = 10):
 @app_commands.describe(amount="Aantal berichten om te verwijderen (of 'all')")
 async def clear(interaction: discord.Interaction, amount: str):
     ALLOWED_ROLES = {
-        1402418357596061756, 
-        1402418713612910663, 
-        1403013958562218054, 
-        1342974632524775527, 
-        1342974632524775528, 
-        1405597740494356631, 
-        1402419665808134395
+        1149718619207512119
     }
 
     # Check of de gebruiker een van de rollen heeft
@@ -680,6 +652,115 @@ async def clear(interaction: discord.Interaction, amount: str):
 
     except ValueError:
         await interaction.followup.send("❌ Ongeldig aantal, gebruik een getal of 'all'.", ephemeral=True)
+
+
+# ------------------- Ticket Transcript -------------------
+
+TICKET_CATEGORY_ID = 1409228873438199989  # <-- pas dit aan naar je ticket categorie ID
+TICKET_STAFF_ROLES = {1149718619207512119}  # staff die toegang krijgt
+TICKET_LOG_CHANNEL_ID = 1150282902299484200  # <-- log kanaal ID (staff-only)
+
+# Ticket knop view
+class TicketView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🎫 Maak een ticket", style=discord.ButtonStyle.primary, custom_id="open_ticket")
+    async def open_ticket(self, interaction: discord.Interaction, button: Button):
+        guild = interaction.guild
+        category = guild.get_channel(TICKET_CATEGORY_ID)
+        if not category or not isinstance(category, discord.CategoryChannel):
+            await interaction.response.send_message("❌ Ticket categorie niet gevonden!", ephemeral=True)
+            return
+
+        # Check of gebruiker al een ticket heeft
+        for ch in category.channels:
+            if ch.name == f"ticket-{interaction.user.id}":
+                await interaction.response.send_message(f"❌ Je hebt al een ticket: {ch.mention}", ephemeral=True)
+                return
+
+        # Permissies: user + staff
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),
+        }
+        for rid in TICKET_STAFF_ROLES:
+            role = guild.get_role(rid)
+            if role:
+                overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
+
+        # Maak ticket
+        ticket_channel = await category.create_text_channel(
+            name=f"ticket-{interaction.user.id}",
+            overwrites=overwrites
+        )
+
+        # Stuur bericht met sluit-knop
+        await ticket_channel.send(
+            content=f"{interaction.user.mention} Ticket geopend! Een stafflid helpt je zo.",
+            view=CloseTicketView()
+        )
+
+        await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
+
+
+# Sluit-knop view met transcript
+class CloseTicketView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="❌ Sluit ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
+    async def close_ticket(self, interaction: discord.Interaction, button: Button):
+        if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
+            return
+
+        log_channel = interaction.guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        if not log_channel:
+            await interaction.response.send_message("❌ Ticket log-kanaal niet gevonden.", ephemeral=True)
+            return
+
+        # Transcript maken
+        transcript = []
+        async for msg in interaction.channel.history(limit=None, oldest_first=True):
+            tijd = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            content = msg.content.replace("\n", "\\n")
+            transcript.append(f"[{tijd}] {msg.author} ({msg.author.id}): {content}")
+
+        if not transcript:
+            transcript_text = "Geen berichten in dit ticket."
+        else:
+            transcript_text = "\n".join(transcript)
+
+        # Sla transcript op in bestand
+        file_name = f"transcript_{interaction.channel.name}.txt"
+        with open(file_name, "w", encoding="utf-8") as f:
+            f.write(transcript_text)
+
+        # Verstuur naar logkanaal
+        await log_channel.send(
+            content=f"📑 Transcript van {interaction.channel.name} gesloten door {interaction.user.mention}:",
+            file=discord.File(file_name)
+        )
+
+        # Ticket sluiten
+        await interaction.channel.delete()
+
+
+# Setup commando om ticket systeem in een kanaal te zetten
+@bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
+async def ticketsetup(interaction: discord.Interaction):
+    if not has_allowed_role(interaction):
+        await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
+        return
+
+    emb = discord.Embed(
+        title="🎫 Tickets",
+        description="Klik op de knop hieronder om een ticket aan te maken.",
+        color=discord.Color.blurple()
+    )
+    await interaction.channel.send(embed=emb, view=TicketView())
+    await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
 
 # ------------------- Start Bot -------------------
 keep_alive()
