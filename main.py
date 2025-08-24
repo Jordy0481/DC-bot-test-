@@ -703,37 +703,33 @@ class TicketView(View):
 
         await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
 
-
-# Ticket sluiten + transcript opslaan
-
+# Sluit-knop view
 class CloseTicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="🔒 Sluit Ticket", style=discord.ButtonStyle.red, custom_id="close_ticket")
+    @discord.ui.button(label="❌ Sluit ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close_ticket(self, interaction: discord.Interaction, button: Button):
-        channel = interaction.channel
+        if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
+            await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
+            return
 
-        # Transcript opbouwen
-        transcript = "<html><body><h1>Ticket Transcript</h1><ul>"
-        async for msg in channel.history(limit=None, oldest_first=True):
-            transcript += f"<li><b>{msg.author} ({msg.author.id})</b> [{msg.created_at.strftime('%Y-%m-%d %H:%M:%S')}]: {msg.content}</li>"
-        transcript += "</ul></body></html>"
+        await interaction.channel.delete()
 
-        file_path = f"transcript-{channel.id}.html"
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write(transcript)
+# Setup commando om ticket systeem in een kanaal te zetten
+@bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
+async def ticketsetup(interaction: discord.Interaction):
+    if not has_allowed_role(interaction):
+        await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
+        return
 
-        # Logkanaal
-        log_channel = discord.utils.get(interaction.guild.text_channels, name="ticket-logs")
-        if log_channel:
-            await log_channel.send(
-                content=f"📑 Transcript van {channel.name} gesloten door {interaction.user.mention}:",
-                file=discord.File(file_path)
-            )
-
-        await interaction.response.send_message("✅ Ticket gesloten en transcript opgeslagen.", ephemeral=True)
-        await channel.delete()
+    emb = discord.Embed(
+        title="🎫 Tickets",
+        description="Klik op de knop hieronder om een ticket aan te maken.",
+        color=discord.Color.blurple()
+    )
+    await interaction.channel.send(embed=emb, view=TicketView())
+    await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
 
 # ------------------- Error handlers -------------------
 from discord.app_commands import AppCommandError
