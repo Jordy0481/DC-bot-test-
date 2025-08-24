@@ -659,50 +659,65 @@ TICKET_CATEGORY_ID = 1409228873438199989  # <-- pas dit aan naar je ticket categ
 TICKET_STAFF_ROLES = {1149718619207512119}  # staff die toegang krijgt
 TICKET_LOG_CHANNEL_ID = 1150282902299484200  # <-- log kanaal ID (staff-only)
 
-# Ticket knop view
-class TicketView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
+# --- Modal om extra info te vragen ---
+class TicketInfoModal(Modal, title="Ticket Info"):
+    reden = TextInput(label="Reden / Informatie", style=discord.TextStyle.paragraph, placeholder="Vertel kort je vraag of klacht...", required=True, max_length=2000)
 
-    @discord.ui.button(label="🎫 Maak een ticket", style=discord.ButtonStyle.primary, custom_id="open_ticket")
-    async def open_ticket(self, interaction: discord.Interaction, button: Button):
+    def __init__(self, category: str, user: discord.Member):
+        super().__init__()
+        self.category_name = category
+        self.user_ref = user
+
+    async def on_submit(self, interaction: discord.Interaction):
         guild = interaction.guild
         category = guild.get_channel(TICKET_CATEGORY_ID)
-        if not category or not isinstance(category, discord.CategoryChannel):
-            await interaction.response.send_message("❌ Ticket categorie niet gevonden!", ephemeral=True)
-            return
 
-        # Check of gebruiker al een ticket heeft
-        for ch in category.channels:
-            if ch.name == f"ticket-{interaction.user.id}":
-                await interaction.response.send_message(f"❌ Je hebt al een ticket: {ch.mention}", ephemeral=True)
-                return
-
-        # Permissies: user + staff
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),
+            self.user_ref: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),
         }
+
         for rid in TICKET_STAFF_ROLES:
             role = guild.get_role(rid)
             if role:
                 overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
 
-        # Maak ticket
         ticket_channel = await category.create_text_channel(
-            name=f"ticket-{interaction.user.id}",
+            name=f"ticket-{self.user_ref.id}-{self.category_name.lower().replace(' ', '-')}",
             overwrites=overwrites
         )
 
-        # Stuur bericht met sluit-knop
         await ticket_channel.send(
-            content=f"{interaction.user.mention} Ticket geopend! Een stafflid helpt je zo.",
+            content=f"{self.user_ref.mention} Ticket geopend! Categorie: **{self.category_name}**\n**Info:** {self.reden.value}",
             view=CloseTicketView()
         )
 
         await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
 
-# Sluit-knop view
+
+# --- Dropdown select voor ticketcategorie ---
+class TicketCategoryView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        options = [
+            SelectOption(label="Algemene Vragen"),
+            SelectOption(label="Klachten (Spelers)"),
+            SelectOption(label="Klachten (Staff)"),
+            SelectOption(label="Ingame Refund"),
+            SelectOption(label="Unban Aanvraag (Discord)"),
+            SelectOption(label="Unban Aanvraag (TX-Admin)"),
+            SelectOption(label="Unban Aanvraag (Anticheat)"),
+            SelectOption(label="Staff Sollicitatie"),
+            SelectOption(label="Donaties"),
+        ]
+        self.add_item(Select(placeholder="Kies een ticket categorie", options=options, custom_id="ticket_category_select", callback=self.select_callback))
+
+    async def select_callback(self, interaction: discord.Interaction, select: Select):
+        category_name = select.values[0]
+        await interaction.response.send_modal(TicketInfoModal(category_name, interaction.user))
+
+
+# --- Sluit-knop view ---
 class CloseTicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -712,10 +727,10 @@ class CloseTicketView(View):
         if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
             await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
             return
-
         await interaction.channel.delete()
 
-# Setup commando om ticket systeem in een kanaal te zetten
+
+# --- Setup commando om ticket systeem te plaatsen ---
 @bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
 async def ticketsetup(interaction: discord.Interaction):
     if not has_allowed_role(interaction):
@@ -724,10 +739,10 @@ async def ticketsetup(interaction: discord.Interaction):
 
     emb = discord.Embed(
         title="🎫 Tickets",
-        description="Klik op de knop hieronder om een ticket aan te maken.",
+        description="Kies een categorie uit het menu hieronder om een ticket aan te maken.",
         color=discord.Color.blurple()
     )
-    await interaction.channel.send(embed=emb, view=TicketView())
+    await interaction.channel.send(embed=emb, view=TicketCategoryView())
     await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
 
 # ------------------- Error handlers -------------------
