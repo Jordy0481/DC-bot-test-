@@ -12,7 +12,6 @@ from discord import SelectOption
 from flask import Flask
 from threading import Thread
 import re
-import discord_html_transcripts as dht
 # ------------------- Keep Alive Webserver -------------------
 app = Flask('')
 
