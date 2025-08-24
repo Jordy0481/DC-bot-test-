@@ -762,6 +762,34 @@ async def ticketsetup(interaction: discord.Interaction):
     await interaction.channel.send(embed=emb, view=TicketView())
     await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
 
+# ------------------- Error handlers -------------------
+from discord.app_commands import AppCommandError
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: AppCommandError):
+    try:
+        if interaction.response.is_done():
+            await interaction.followup.send(f"❌ Er ging iets mis: `{error}`", ephemeral=True)
+        else:
+            await interaction.response.send_message(f"❌ Er ging iets mis: `{error}`", ephemeral=True)
+    except:
+        pass
+    import traceback
+    traceback.print_exception(type(error), error, error.__traceback__)
+
+class SafeView(discord.ui.View):
+    async def on_error(self, error: Exception, item: discord.ui.Item, interaction: discord.Interaction):
+        try:
+            if interaction.response.is_done():
+                await interaction.followup.send("❌ Fout bij uitvoeren van deze knop/select.", ephemeral=True)
+            else:
+                await interaction.response.send_message("❌ Fout bij uitvoeren van deze knop/select.", ephemeral=True)
+        except:
+            pass
+        import traceback
+        traceback.print_exception(type(error), error, error.__traceback__)
+
+
 # ------------------- Start Bot -------------------
 keep_alive()
 TOKEN = os.getenv("DISCORD_TOKEN")
