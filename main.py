@@ -705,21 +705,26 @@ class TicketView(View):
 
 
 # Ticket sluiten + transcript opslaan
-class CloseTicketView(discord.ui.View):
+
+class CloseTicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="🔒 Sluit Ticket", style=discord.ButtonStyle.red, custom_id="close_ticket")
-    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def close_ticket(self, interaction: discord.Interaction, button: Button):
         channel = interaction.channel
 
-        # Transcript genereren
-        transcript = await dht.async_html_transcript(channel, limit=None, tz_info="Europe/Amsterdam")
+        # Transcript opbouwen
+        transcript = "<html><body><h1>Ticket Transcript</h1><ul>"
+        async for msg in channel.history(limit=None, oldest_first=True):
+            transcript += f"<li><b>{msg.author} ({msg.author.id})</b> [{msg.created_at.strftime('%Y-%m-%d %H:%M:%S')}]: {msg.content}</li>"
+        transcript += "</ul></body></html>"
+
         file_path = f"transcript-{channel.id}.html"
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(transcript)
 
-        # Log kanaal zoeken
+        # Logkanaal
         log_channel = discord.utils.get(interaction.guild.text_channels, name="ticket-logs")
         if log_channel:
             await log_channel.send(
@@ -727,10 +732,7 @@ class CloseTicketView(discord.ui.View):
                 file=discord.File(file_path)
             )
 
-        # Bericht naar de sluiter
         await interaction.response.send_message("✅ Ticket gesloten en transcript opgeslagen.", ephemeral=True)
-
-        # Ticket sluiten
         await channel.delete()
 
 # ------------------- Error handlers -------------------
