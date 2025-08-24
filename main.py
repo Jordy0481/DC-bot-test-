@@ -659,78 +659,119 @@ TICKET_CATEGORY_ID = 1409228873438199989  # <-- pas dit aan naar je ticket categ
 TICKET_STAFF_ROLES = {1149718619207512119}  # staff die toegang krijgt
 TICKET_LOG_CHANNEL_ID = 1150282902299484200  # <-- log kanaal ID (staff-only)
 
-# --- Modal om extra info te vragen ---
-class TicketInfoModal(Modal, title="Ticket Info"):
-    reden = TextInput(label="Reden / Informatie", style=discord.TextStyle.paragraph, placeholder="Vertel kort je vraag of klacht...", required=True, max_length=2000)
+# ------------------- Ticket Modal -------------------
+class TicketReasonModal(discord.ui.Modal, title="Ticket Reden en Info"):
+    def __init__(self, ticket_type: str):
+        super().__init__(timeout=None)
+        self.ticket_type = ticket_type
 
-    def __init__(self, category: str, user: discord.Member):
-        super().__init__()
-        self.category_name = category
-        self.user_ref = user
+        # Reden
+        self.reason = discord.ui.TextInput(
+            label="Reden van je ticket",
+            placeholder="Beschrijf kort waarom je dit ticket opent...",
+            style=discord.TextStyle.short,
+            required=True,
+            max_length=200
+        )
+        self.add_item(self.reason)
+
+        # Extra info
+        self.info = discord.ui.TextInput(
+            label="Extra informatie",
+            placeholder="Voeg extra details toe zodat staff je sneller kan helpen.",
+            style=discord.TextStyle.paragraph,
+            required=False,
+            max_length=1000
+        )
+        self.add_item(self.info)
 
     async def on_submit(self, interaction: discord.Interaction):
         guild = interaction.guild
         category = guild.get_channel(TICKET_CATEGORY_ID)
 
+        if not category or not isinstance(category, discord.CategoryChannel):
+            await interaction.response.send_message("❌ Ticket categorie niet gevonden!", ephemeral=True)
+            return
+
+        # Check of gebruiker al een ticket heeft
+        for ch in category.channels:
+            if ch.name == f"ticket-{interaction.user.id}":
+                await interaction.response.send_message(f"❌ Je hebt al een ticket: {ch.mention}", ephemeral=True)
+                return
+
+        # Permissies
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            self.user_ref: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),
+            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True),
         }
-
         for rid in TICKET_STAFF_ROLES:
             role = guild.get_role(rid)
             if role:
                 overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
 
+        # Kanaalnaam = type + user
+        channel_name = f"{self.ticket_type.lower().replace(' ', '-')}-{interaction.user.id}"
+
         ticket_channel = await category.create_text_channel(
-            name=f"ticket-{self.user_ref.id}-{self.category_name.lower().replace(' ', '-')}",
+            name=channel_name,
             overwrites=overwrites
         )
 
-        await ticket_channel.send(
-            content=f"{self.user_ref.mention} Ticket geopend! Categorie: **{self.category_name}**\n**Info:** {self.reden.value}",
-            view=CloseTicketView()
+        # Embed in ticket
+        emb = discord.Embed(
+            title=f"🎫 Ticket geopend - {self.ticket_type}",
+            description=f"**Door:** {interaction.user.mention}\n\n**Reden:** {self.reason.value}\n\n**Extra info:** {self.info.value if self.info.value else 'Geen extra info'}",
+            color=discord.Color.blurple()
         )
+
+        await ticket_channel.send(content=f"{interaction.user.mention} Ticket aangemaakt!", embed=emb, view=CloseTicketView())
 
         await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
 
 
-# --- Dropdown select voor ticketcategorie ---
-class TicketCategoryView(View):
+# ------------------- Dropdown Menu -------------------
+class TicketDropdown(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Algemene Vragen", emoji="❓"),
+            discord.SelectOption(label="Klachten (Spelers)", emoji="👤"),
+            discord.SelectOption(label="Klachten (Staff)", emoji="🛑"),
+            discord.SelectOption(label="Ingame Refund", emoji="💰"),
+            discord.SelectOption(label="Unban Aanvraag (Discord)", emoji="💬"),
+            discord.SelectOption(label="Unban Aanvraag (TX-Admin)", emoji="🖥️"),
+            discord.SelectOption(label="Unban Aanvraag (Anticheat)", emoji="⚠️"),
+            discord.SelectOption(label="Staff Sollicitatie", emoji="📝"),
+            discord.SelectOption(label="Donaties", emoji="💎"),
+        ]
+        super().__init__(placeholder="📌 Kies een ticket type...", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        ticket_type = self.values[0]
+        await interaction.response.send_modal(TicketReasonModal(ticket_type))
+
+
+# ------------------- Dropdown View -------------------
+class TicketDropdownView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        options = [
-            SelectOption(label="Algemene Vragen"),
-            SelectOption(label="Klachten (Spelers)"),
-            SelectOption(label="Klachten (Staff)"),
-            SelectOption(label="Ingame Refund"),
-            SelectOption(label="Unban Aanvraag (Discord)"),
-            SelectOption(label="Unban Aanvraag (TX-Admin)"),
-            SelectOption(label="Unban Aanvraag (Anticheat)"),
-            SelectOption(label="Staff Sollicitatie"),
-            SelectOption(label="Donaties"),
-        ]
-        self.add_item(Select(placeholder="Kies een ticket categorie", options=options, custom_id="ticket_category_select", callback=self.select_callback))
-
-    async def select_callback(self, interaction: discord.Interaction, select: Select):
-        category_name = select.values[0]
-        await interaction.response.send_modal(TicketInfoModal(category_name, interaction.user))
+        self.add_item(TicketDropdown())
 
 
-# --- Sluit-knop view ---
-class CloseTicketView(View):
+# ------------------- Sluit-knop -------------------
+class CloseTicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="❌ Sluit ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
-    async def close_ticket(self, interaction: discord.Interaction, button: Button):
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
             await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
             return
+
         await interaction.channel.delete()
 
 
-# --- Setup commando om ticket systeem te plaatsen ---
+# ------------------- Setup Commando -------------------
 @bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
 async def ticketsetup(interaction: discord.Interaction):
     if not has_allowed_role(interaction):
@@ -739,12 +780,11 @@ async def ticketsetup(interaction: discord.Interaction):
 
     emb = discord.Embed(
         title="🎫 Tickets",
-        description="Kies een categorie uit het menu hieronder om een ticket aan te maken.",
+        description="Selecteer hieronder het type ticket dat je wilt openen.",
         color=discord.Color.blurple()
     )
-    await interaction.channel.send(embed=emb, view=TicketCategoryView())
+    await interaction.channel.send(embed=emb, view=TicketDropdownView())
     await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
-
 # ------------------- Error handlers -------------------
 from discord.app_commands import AppCommandError
 
