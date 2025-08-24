@@ -12,7 +12,7 @@ from discord import SelectOption
 from flask import Flask
 from threading import Thread
 import re
-
+import discord_html_transcripts as dht
 # ------------------- Keep Alive Webserver -------------------
 app = Flask('')
 
@@ -704,63 +704,34 @@ class TicketView(View):
         await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
 
 
-# Sluit-knop view met transcript
-class CloseTicketView(View):
+# Ticket sluiten + transcript opslaan
+class CloseTicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="❌ Sluit ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
-    async def close_ticket(self, interaction: discord.Interaction, button: Button):
-        if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
-            await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
-            return
+    @discord.ui.button(label="🔒 Sluit Ticket", style=discord.ButtonStyle.red, custom_id="close_ticket")
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        channel = interaction.channel
 
-        log_channel = interaction.guild.get_channel(TICKET_LOG_CHANNEL_ID)
-        if not log_channel:
-            await interaction.response.send_message("❌ Ticket log-kanaal niet gevonden.", ephemeral=True)
-            return
+        # Transcript genereren
+        transcript = await dht.async_html_transcript(channel, limit=None, tz_info="Europe/Amsterdam")
+        file_path = f"transcript-{channel.id}.html"
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write(transcript)
 
-        # Transcript maken
-        transcript = []
-        async for msg in interaction.channel.history(limit=None, oldest_first=True):
-            tijd = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            content = msg.content.replace("\n", "\\n")
-            transcript.append(f"[{tijd}] {msg.author} ({msg.author.id}): {content}")
+        # Log kanaal zoeken
+        log_channel = discord.utils.get(interaction.guild.text_channels, name="ticket-logs")
+        if log_channel:
+            await log_channel.send(
+                content=f"📑 Transcript van {channel.name} gesloten door {interaction.user.mention}:",
+                file=discord.File(file_path)
+            )
 
-        if not transcript:
-            transcript_text = "Geen berichten in dit ticket."
-        else:
-            transcript_text = "\n".join(transcript)
-
-        # Sla transcript op in bestand
-        file_name = f"transcript_{interaction.channel.name}.txt"
-        with open(file_name, "w", encoding="utf-8") as f:
-            f.write(transcript_text)
-
-        # Verstuur naar logkanaal
-        await log_channel.send(
-            content=f"📑 Transcript van {interaction.channel.name} gesloten door {interaction.user.mention}:",
-            file=discord.File(file_name)
-        )
+        # Bericht naar de sluiter
+        await interaction.response.send_message("✅ Ticket gesloten en transcript opgeslagen.", ephemeral=True)
 
         # Ticket sluiten
-        await interaction.channel.delete()
-
-
-# Setup commando om ticket systeem in een kanaal te zetten
-@bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
-async def ticketsetup(interaction: discord.Interaction):
-    if not has_allowed_role(interaction):
-        await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
-        return
-
-    emb = discord.Embed(
-        title="🎫 Tickets",
-        description="Klik op de knop hieronder om een ticket aan te maken.",
-        color=discord.Color.blurple()
-    )
-    await interaction.channel.send(embed=emb, view=TicketView())
-    await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
+        await channel.delete()
 
 # ------------------- Error handlers -------------------
 from discord.app_commands import AppCommandError
