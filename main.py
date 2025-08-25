@@ -823,8 +823,20 @@ class CloseTicketView(View):
     @discord.ui.button(label="❌ Sluit ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close_ticket(self, interaction: discord.Interaction, button: Button):
         if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
-           
+            await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
+            return
+        await interaction.channel.delete()
 
+
+# ------------------- Setup Command -------------------
+@bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
+async def ticketsetup(interaction: discord.Interaction):
+    if not has_allowed_role(interaction):
+        await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
+        return
+    emb = discord.Embed(title="🎫 Tickets", description="Selecteer hieronder het type ticket dat je wilt openen.", color=discord.Color.blurple())
+    await interaction.channel.send(embed=emb, view=TicketDropdownView())
+    await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
 
 # ------------------- Start Bot -------------------
 keep_alive()
