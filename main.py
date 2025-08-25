@@ -652,7 +652,6 @@ async def clear(interaction: discord.Interaction, amount: str):
     except ValueError:
         await interaction.followup.send("❌ Ongeldig aantal, gebruik een getal of 'all'.", ephemeral=True)
 
-
 # ------------------- Config -------------------
 TICKET_CATEGORIES = {
     "Algemene Vragen": 111111111111111111,
@@ -747,7 +746,7 @@ class TicketReasonModal(Modal):
             return
 
         # Check max tickets
-        user_tickets = [ch for ch in category.channels if f"-{interaction.user.id}" in ch.name or f"ticket-{interaction.user.name.lower().replace(' ', '-')}" in ch.name]
+        user_tickets = [ch for ch in category.channels if ch.name.startswith(f"ticket-{interaction.user.name.lower().replace(' ', '-')}")]
         if len(user_tickets) >= MAX_TICKETS_PER_USER:
             await interaction.response.send_message(f"❌ Je hebt al {MAX_TICKETS_PER_USER} tickets open!", ephemeral=True)
             return
@@ -769,34 +768,34 @@ class TicketReasonModal(Modal):
 
         ticket_channel = await category.create_text_channel(name=channel_name, overwrites=overwrites)
 
-       # ------------------- Ticket Transcript -------------------
-# Maak veilige tekst voor transcript
-desc_lines = []
-for i in self.children:
-    label = i.label
-    value = i.value.replace("`", "'")
-    desc_lines.append(f"**{label}:**\n{value}\n")
-transcript_text = "\n".join(desc_lines)
+        # ------------------- Ticket Transcript (Mateo.id-style) -------------------
+        desc_lines = []
+        for i in self.children:
+            label = i.label
+            value = i.value.replace("`", "'")
+            desc_lines.append(f"**{label}:**\n{value}\n")
+        transcript_text = "\n".join(desc_lines)
 
-# Embed met aparte velden zoals Mateo.id
-transcript_embed = discord.Embed(
-    title=f"🎫 Nieuw Ticket",
-    color=discord.Color.blurple(),
-    timestamp=datetime.utcnow()
-)
-transcript_embed.add_field(name="Ticket Type", value=self.ticket_type, inline=True)
-transcript_embed.add_field(name="Maker", value=str(interaction.user), inline=True)
-transcript_embed.add_field(name="Ingevulde Gegevens", value=transcript_text, inline=False)
-transcript_embed.set_footer(text=f"Ticket ID: {ticket_channel.id}")
-transcript_embed.set_author(name=interaction.user, icon_url=interaction.user.display_avatar.url)
+        transcript_embed = discord.Embed(
+            title=f"🎫 Nieuw Ticket",
+            color=discord.Color.blurple(),
+            timestamp=datetime.utcnow()
+        )
+        transcript_embed.add_field(name="Ticket Type", value=self.ticket_type, inline=True)
+        transcript_embed.add_field(name="Maker", value=str(interaction.user), inline=True)
+        transcript_embed.add_field(name="Ingevulde Gegevens", value=transcript_text, inline=False)
+        transcript_embed.set_footer(text=f"Ticket ID: {ticket_channel.id}")
+        transcript_embed.set_author(name=interaction.user, icon_url=interaction.user.display_avatar.url)
 
-# Verstuur embed in ticket
-await ticket_channel.send(content=f"{interaction.user.mention} Ticket aangemaakt!", embed=transcript_embed, view=CloseTicketView())
+        # Verstuur embed in ticket
+        await ticket_channel.send(content=f"{interaction.user.mention} Ticket aangemaakt!", embed=transcript_embed, view=CloseTicketView())
 
-# Verstuur embed naar logkanaal
-log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
-if log_channel:
-    await log_channel.send(embed=transcript_embed)
+        # Verstuur embed naar logkanaal
+        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
+        if log_channel:
+            await log_channel.send(embed=transcript_embed)
+
+        await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
 
 
 # ------------------- Dropdown -------------------
@@ -824,20 +823,7 @@ class CloseTicketView(View):
     @discord.ui.button(label="❌ Sluit ticket", style=discord.ButtonStyle.danger, custom_id="close_ticket")
     async def close_ticket(self, interaction: discord.Interaction, button: Button):
         if not any(r.id in TICKET_STAFF_ROLES for r in interaction.user.roles):
-            await interaction.response.send_message("❌ Alleen staff kan tickets sluiten.", ephemeral=True)
-            return
-        await interaction.channel.delete()
-
-
-# ------------------- Setup Command -------------------
-@bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
-async def ticketsetup(interaction: discord.Interaction):
-    if not has_allowed_role(interaction):
-        await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
-        return
-    emb = discord.Embed(title="🎫 Tickets", description="Selecteer hieronder het type ticket dat je wilt openen.", color=discord.Color.blurple())
-    await interaction.channel.send(embed=emb, view=TicketDropdownView())
-    await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
+           
 
 
 # ------------------- Start Bot -------------------
