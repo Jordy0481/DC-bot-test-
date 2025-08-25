@@ -669,49 +669,50 @@ TICKET_STAFF_ROLES = {1149718619207512119}  # Staff rollen
 TICKET_LOG_CHANNEL_ID = 1150282902299484200
 MAX_TICKETS_PER_USER = 10
 
+
 # ------------------- Ticket Modal -------------------
 class TicketReasonModal(Modal):
     def __init__(self, ticket_type: str):
         super().__init__(timeout=None, title=f"{ticket_type} Ticket")
         self.ticket_type = ticket_type
 
-        # Algemeen / Specifiek per type
+        # Voeg velden per tickettype toe
         if ticket_type == "Algemene Vragen":
-            self.reason = TextInput(label="Reden van je ticket", placeholder="Beschrijf kort waarom je dit ticket opent...", style=discord.TextStyle.short, required=True, max_length=200)
-            self.info = TextInput(label="Extra informatie", placeholder="Voeg extra details toe zodat staff je sneller kan helpen.", style=discord.TextStyle.paragraph, required=False, max_length=1000)
+            self.reason = TextInput(label="Reden van je ticket", placeholder="Beschrijf kort...", style=discord.TextStyle.short, required=True)
+            self.info = TextInput(label="Extra informatie", placeholder="Voeg extra details toe...", style=discord.TextStyle.paragraph, required=False)
             self.add_item(self.reason)
             self.add_item(self.info)
 
         elif "Klachten" in ticket_type:
-            self.reason = TextInput(label="Waarom open je dit ticket?", style=discord.TextStyle.paragraph, required=True, max_length=300)
-            self.who = TextInput(label="Wie betreft het?", style=discord.TextStyle.short, required=True, max_length=100)
-            self.proof = TextInput(label="Heb je bewijs?", placeholder="Ja/Nee, voeg link/screenshot toe indien mogelijk.", style=discord.TextStyle.paragraph, required=True, max_length=1000)
+            self.reason = TextInput(label="Waarom open je dit ticket?", style=discord.TextStyle.paragraph, required=True)
+            self.who = TextInput(label="Wie betreft het?", style=discord.TextStyle.short, required=True)
+            self.proof = TextInput(label="Heb je bewijs?", style=discord.TextStyle.paragraph, required=True)
             self.add_item(self.reason)
             self.add_item(self.who)
             self.add_item(self.proof)
 
         elif "Refund" in ticket_type:
-            self.reason = TextInput(label="Waarom wil je een refund?", style=discord.TextStyle.paragraph, required=True, max_length=300)
-            self.what = TextInput(label="Wat wil je terug?", style=discord.TextStyle.paragraph, required=True, max_length=300)
-            self.proof = TextInput(label="Bewijs (minimaal 2 minuten clip)", placeholder="Voeg link of info toe", style=discord.TextStyle.paragraph, required=True, max_length=1000)
+            self.reason = TextInput(label="Waarom wil je een refund?", style=discord.TextStyle.paragraph, required=True)
+            self.what = TextInput(label="Wat wil je terug?", style=discord.TextStyle.paragraph, required=True)
+            self.proof = TextInput(label="Bewijs (minimaal 2 minuten clip)", style=discord.TextStyle.paragraph, required=True)
             self.add_item(self.reason)
             self.add_item(self.what)
             self.add_item(self.proof)
 
         elif "Unban" in ticket_type:
-            self.reason = TextInput(label="Reden van unban aanvraag", style=discord.TextStyle.paragraph, required=True, max_length=300)
-            self.ban_id = TextInput(label="Ban ID", style=discord.TextStyle.short, required=True, max_length=50)
-            self.info = TextInput(label="Extra info", style=discord.TextStyle.paragraph, required=False, max_length=1000)
+            self.reason = TextInput(label="Reden van unban aanvraag", style=discord.TextStyle.paragraph, required=True)
+            self.ban_id = TextInput(label="Ban ID", style=discord.TextStyle.short, required=True)
+            self.info = TextInput(label="Extra info", style=discord.TextStyle.paragraph, required=False)
             self.add_item(self.reason)
             self.add_item(self.ban_id)
             self.add_item(self.info)
 
         elif ticket_type == "Staff Sollicitatie":
-            self.name = TextInput(label="Wat is je naam?", style=discord.TextStyle.short, required=True, max_length=100)
-            self.age = TextInput(label="Wat is je leeftijd?", style=discord.TextStyle.short, required=True, max_length=10)
-            self.add_value = TextInput(label="Wat kan jij toevoegen aan het team?", style=discord.TextStyle.paragraph, required=True, max_length=500)
-            self.motivation = TextInput(label="Wat is je motivatie?", style=discord.TextStyle.paragraph, required=True, max_length=500)
-            self.experience = TextInput(label="Heb je ervaring als staff?", style=discord.TextStyle.short, required=True, max_length=200)
+            self.name = TextInput(label="Naam?", style=discord.TextStyle.short, required=True)
+            self.age = TextInput(label="Leeftijd?", style=discord.TextStyle.short, required=True)
+            self.add_value = TextInput(label="Wat kan jij toevoegen?", style=discord.TextStyle.paragraph, required=True)
+            self.motivation = TextInput(label="Motivatie?", style=discord.TextStyle.paragraph, required=True)
+            self.experience = TextInput(label="Ervaring als staff?", style=discord.TextStyle.short, required=True)
             self.add_item(self.name)
             self.add_item(self.age)
             self.add_item(self.add_value)
@@ -719,14 +720,14 @@ class TicketReasonModal(Modal):
             self.add_item(self.experience)
 
         elif ticket_type == "Donaties":
-            self.name = TextInput(label="Naam / Discord-tag", style=discord.TextStyle.short, required=True, max_length=100)
-            self.email = TextInput(label="E-mailadres (optioneel)", style=discord.TextStyle.short, required=False, max_length=100)
-            self.amount = TextInput(label="Hoeveel wil je doneren?", style=discord.TextStyle.short, required=True, max_length=50)
-            self.payment = TextInput(label="Via welke betaalmethode?", style=discord.TextStyle.short, required=True, max_length=100)
-            self.anonymous = TextInput(label="Wil je anoniem blijven?", style=discord.TextStyle.short, required=True, max_length=50)
-            self.proof = TextInput(label="Bewijs van betaling (screenshot/ID)", style=discord.TextStyle.paragraph, required=True, max_length=1000)
-            self.extra = TextInput(label="Extra opmerkingen", style=discord.TextStyle.paragraph, required=False, max_length=1000)
-            self.confirm = TextInput(label="Bevestig dat de donatie definitief is", style=discord.TextStyle.short, required=True, max_length=50)
+            self.name = TextInput(label="Naam / Discord-tag", style=discord.TextStyle.short, required=True)
+            self.email = TextInput(label="E-mailadres (optioneel)", style=discord.TextStyle.short, required=False)
+            self.amount = TextInput(label="Hoeveel wil je doneren?", style=discord.TextStyle.short, required=True)
+            self.payment = TextInput(label="Via welke betaalmethode?", style=discord.TextStyle.short, required=True)
+            self.anonymous = TextInput(label="Wil je anoniem blijven?", style=discord.TextStyle.short, required=True)
+            self.proof = TextInput(label="Bewijs van betaling", style=discord.TextStyle.paragraph, required=True)
+            self.extra = TextInput(label="Extra opmerkingen", style=discord.TextStyle.paragraph, required=False)
+            self.confirm = TextInput(label="Bevestig dat de donatie definitief is", style=discord.TextStyle.short, required=True)
             self.add_item(self.name)
             self.add_item(self.email)
             self.add_item(self.amount)
@@ -740,46 +741,37 @@ class TicketReasonModal(Modal):
         guild = interaction.guild
         category_id = TICKET_CATEGORIES.get(self.ticket_type)
         category = guild.get_channel(category_id)
-
         if not category or not isinstance(category, discord.CategoryChannel):
             await interaction.response.send_message("❌ Ticket categorie niet gevonden!", ephemeral=True)
             return
 
         # Check max tickets
-        user_tickets = [ch for ch in category.channels if ch.name.startswith(f"ticket-{interaction.user.name.lower().replace(' ', '-')}")]
+        username_safe = interaction.user.name.lower().replace(" ", "-")
+        user_tickets = [ch for ch in category.channels if ch.name.startswith(f"ticket-{username_safe}")]
         if len(user_tickets) >= MAX_TICKETS_PER_USER:
             await interaction.response.send_message(f"❌ Je hebt al {MAX_TICKETS_PER_USER} tickets open!", ephemeral=True)
             return
 
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True)
-        }
+        # Overwrites
+        overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False),
+                      interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, attach_files=True, embed_links=True)}
         for rid in TICKET_STAFF_ROLES:
             role = guild.get_role(rid)
             if role:
                 overwrites[role] = discord.PermissionOverwrite(view_channel=True, send_messages=True)
 
-        # Ticketnaam gebaseerd op gebruikersnaam + teller
-        username_safe = interaction.user.name.lower().replace(' ', '-')
-        existing_channels = [ch for ch in category.channels if ch.name.startswith(f"ticket-{username_safe}")]
-        count = len(existing_channels) + 1
+        # Ticket kanaal
+        count = len(user_tickets) + 1
         channel_name = f"ticket-{username_safe}-{count}"
-
         ticket_channel = await category.create_text_channel(name=channel_name, overwrites=overwrites)
 
-        # ------------------- Ticket Transcript (Mateo.id-style) -------------------
-        desc_lines = []
-        for i in self.children:
-            label = i.label
-            value = i.value.replace("`", "'")
-            desc_lines.append(f"**{label}:**\n{value}\n")
+        # Transcript embed
+        desc_lines = [f"**{i.label}:**\n{i.value.replace('`','')}\n" for i in self.children]
         transcript_text = "\n".join(desc_lines)
-
         transcript_embed = discord.Embed(
-            title=f"🎫 Nieuw Ticket",
+            title="🎫 Nieuw Ticket",
             color=discord.Color.blurple(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         transcript_embed.add_field(name="Ticket Type", value=self.ticket_type, inline=True)
         transcript_embed.add_field(name="Maker", value=str(interaction.user), inline=True)
@@ -787,7 +779,7 @@ class TicketReasonModal(Modal):
         transcript_embed.set_footer(text=f"Ticket ID: {ticket_channel.id}")
         transcript_embed.set_author(name=interaction.user, icon_url=interaction.user.display_avatar.url)
 
-        # Verstuur embed in ticket
+        # Verstuur embed in ticketkanaal
         await ticket_channel.send(content=f"{interaction.user.mention} Ticket aangemaakt!", embed=transcript_embed, view=CloseTicketView())
 
         # Verstuur embed naar logkanaal
@@ -795,6 +787,7 @@ class TicketReasonModal(Modal):
         if log_channel:
             await log_channel.send(embed=transcript_embed)
 
+        # Bevestiging naar gebruiker
         await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
 
 
@@ -805,8 +798,7 @@ class TicketDropdown(Select):
         super().__init__(placeholder="📌 Kies een ticket type...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        ticket_type = self.values[0]
-        await interaction.response.send_modal(TicketReasonModal(ticket_type))
+        await interaction.response.send_modal(TicketReasonModal(self.values[0]))
 
 
 class TicketDropdownView(View):
@@ -815,7 +807,7 @@ class TicketDropdownView(View):
         self.add_item(TicketDropdown())
 
 
-# ------------------- Sluit-knop -------------------
+# ------------------- Close ticket -------------------
 class CloseTicketView(View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -828,15 +820,14 @@ class CloseTicketView(View):
         await interaction.channel.delete()
 
 
-# ------------------- Setup Command -------------------
+# ------------------- Ticket Setup Command -------------------
 @bot.tree.command(name="ticketsetup", description="Plaats ticket systeem in dit kanaal", guild=discord.Object(id=GUILD_ID))
 async def ticketsetup(interaction: discord.Interaction):
     if not has_allowed_role(interaction):
         await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
         return
     emb = discord.Embed(title="🎫 Tickets", description="Selecteer hieronder het type ticket dat je wilt openen.", color=discord.Color.blurple())
-    await interaction.channel.send(embed=emb, view=TicketDropdownView())
-    await interaction.response.send_message("✅ Ticket systeem geplaatst!", ephemeral=True)
+    await interaction.response.send_message(embed=emb, view=TicketDropdownView())  # één response
 
 # ------------------- Start Bot -------------------
 keep_alive()
