@@ -654,19 +654,19 @@ async def clear(interaction: discord.Interaction, amount: str):
 
 # ------------------- Config -------------------
 TICKET_CATEGORIES = {
-    "Algemene Vragen": 111111111111111111,
-    "Klachten (Spelers)": 222222222222222222,
-    "Klachten (Staff)": 333333333333333333,
-    "Ingame Refund": 444444444444444444,
-    "Unban Aanvraag (Discord)": 555555555555555555,
-    "Unban Aanvraag (TX-Admin)": 666666666666666666,
-    "Unban Aanvraag (Anticheat)": 777777777777777777,
-    "Staff Sollicitatie": 888888888888888888,
-    "Donaties": 999999999999999999,
+    "Algemene Vragen": 1409228873438199989,
+    "Klachten (Spelers)": 1409228873438199989,
+    "Klachten (Staff)": 1409228873438199989,
+    "Ingame Refund": 1409228873438199989,
+    "Unban Aanvraag (Discord)": 1409228873438199989,
+    "Unban Aanvraag (TX-Admin)": 1409228873438199989,
+    "Unban Aanvraag (Anticheat)": 1409228873438199989,
+    "Staff Sollicitatie": 1409228873438199989,
+    "Donaties": 1409228873438199989,
 }
 
-TICKET_STAFF_ROLES = {1409557291329392744}  # Staff rollen
-TICKET_LOG_CHANNEL_ID = 1409557293283934247
+TICKET_STAFF_ROLES = {1149718619207512119}  # Staff rollen
+TICKET_LOG_CHANNEL_ID = 1150282902299484200
 MAX_TICKETS_PER_USER = 10
 
 # ------------------- Ticket Modal -------------------
