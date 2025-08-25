@@ -679,6 +679,7 @@ class TicketReasonModal(Modal):
         super().__init__(timeout=None, title=f"{ticket_type} Ticket")
         self.ticket_type = ticket_type
 
+        # Voeg velden per tickettype toe
         if ticket_type == "Algemene Vragen":
             self.reason = TextInput(label="Reden van je ticket", placeholder="Beschrijf kort...", style=discord.TextStyle.short, required=True)
             self.info = TextInput(label="Extra informatie", placeholder="Voeg extra details toe...", style=discord.TextStyle.paragraph, required=False)
@@ -776,14 +777,10 @@ class TicketReasonModal(Modal):
         transcript_embed.set_footer(text=f"Ticket ID: {ticket_channel.id}")
         transcript_embed.set_author(name=interaction.user, icon_url=interaction.user.display_avatar.url)
 
-        await ticket_channel.send(content=f"{interaction.user.mention} Ticket aangemaakt!", embed=transcript_embed, view=CloseTicketView())
-
-        # Logkanaal embed
-        log_channel = guild.get_channel(TICKET_LOG_CHANNEL_ID)
-        if log_channel:
-            await log_channel.send(embed=transcript_embed)
-
-        await interaction.response.send_message(f"✅ Ticket aangemaakt: {ticket_channel.mention}", ephemeral=True)
+        # Direct response om interaction ack te geven
+        await interaction.response.send_message(f"🎫 Ticket wordt aangemaakt...", ephemeral=True)
+        # Stuur ticket embed + view via followup
+        await interaction.followup.send(embed=transcript_embed, view=CloseTicketView(), ephemeral=False, content=f"{interaction.user.mention} Ticket aangemaakt in {ticket_channel.mention}")
 
 # ------------------- Dropdown -------------------
 class TicketDropdown(Select):
@@ -828,10 +825,8 @@ class CloseTicketView(View):
 async def on_message(message):
     if message.author.bot:
         return
-
     if message.channel.id in ticket_messages:
         ticket_messages[message.channel.id].append(f"[{message.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {message.author}: {message.content}")
-
     await bot.process_commands(message)
 
 # ------------------- Ticket Setup Command -------------------
@@ -840,8 +835,12 @@ async def ticketsetup(interaction: discord.Interaction):
     if not has_allowed_role(interaction):
         await interaction.response.send_message("❌ Geen permissie.", ephemeral=True)
         return
+
+    # Direct ack om 404 te voorkomen
+    await interaction.response.send_message("🎫 Ticket systeem wordt geplaatst...", ephemeral=True)
+
     emb = discord.Embed(title="🎫 Tickets", description="Selecteer hieronder het type ticket dat je wilt openen.", color=discord.Color.blurple())
-    await interaction.response.send_message(embed=emb, view=TicketDropdownView())
+    await interaction.followup.send(embed=emb, view=TicketDropdownView())
 
 # ------------------- Start Bot -------------------
 keep_alive()
