@@ -70,9 +70,27 @@ async def on_ready():
 
 # ------------------- Embed Modal -------------------
 class EmbedModal(Modal, title="Maak een Embed"):
-    titel = TextInput(label="Titel", style=discord.TextStyle.short, placeholder="Bijv. Mededeling", required=True, max_length=100)
-    beschrijving = TextInput(label="Beschrijving", style=discord.TextStyle.paragraph, placeholder="Tekst die in de embed verschijnt", required=True, max_length=2000)
-    kleur = TextInput(label="Kleur (hex of none)", style=discord.TextStyle.short, placeholder="#2ecc71", required=False, max_length=10)
+    titel = TextInput(
+        label="Titel", 
+        style=discord.TextStyle.short, 
+        placeholder="Bijv. Mededeling", 
+        required=True, 
+        max_length=100
+    )
+    beschrijving = TextInput(
+        label="Beschrijving", 
+        style=discord.TextStyle.paragraph, 
+        placeholder="Tekst die in de embed verschijnt", 
+        required=True, 
+        max_length=2000
+    )
+    kleur = TextInput(
+        label="Kleur (hex of none)", 
+        style=discord.TextStyle.short, 
+        placeholder="#2ecc71", 
+        required=False, 
+        max_length=10
+    )
 
     async def on_submit(self, interaction: discord.Interaction):
         kleur_input = self.kleur.value or "#2ecc71"
@@ -84,7 +102,11 @@ class EmbedModal(Modal, title="Maak een Embed"):
             except:
                 color = discord.Color.default()
 
-        embed = discord.Embed(title=self.titel.value, description=self.beschrijving.value, color=color)
+        embed = discord.Embed(
+            title=self.titel.value, 
+            description=self.beschrijving.value, 
+            color=color
+        )
         embed.set_footer(text=f"Gemaakt door {interaction.user}")
 
         guild = interaction.guild
@@ -92,31 +114,102 @@ class EmbedModal(Modal, title="Maak een Embed"):
             await interaction.response.send_message("Kon guild niet vinden.", ephemeral=True)
             return
 
-        options = [SelectOption(label=ch.name, value=str(ch.id)) for ch in guild.text_channels[:25]]
-
-        class ChannelSelect(View):
-            @discord.ui.select(placeholder="Kies een kanaal", options=options)
-            async def select_callback(self, select_interaction: discord.Interaction, select: Select):
-                kanaal_id = int(select.values[0])
-                kanaal = guild.get_channel(kanaal_id)
-                if kanaal is None:
-                    await select_interaction.response.edit_message(content="Kanaal niet gevonden.", view=None)
-                    return
-                await kanaal.send(embed=embed)
-                await select_interaction.response.edit_message(content=f"✅ Embed gestuurd naar {kanaal.mention}", view=None)
-
-        await interaction.response.send_message("Kies een kanaal voor je embed:", view=ChannelSelect(), ephemeral=True)
+        # Start paginatie view
+        await interaction.response.send_message(
+            "Kies een kanaal voor je embed:",
+            view=ChannelSelectView(embed, guild),
+            ephemeral=True
+        )
 
 
+# ------------------- Kanaal Selectie Views -------------------
+
+class ChannelSelectView(View):
+    def __init__(self, embed: discord.Embed, guild: discord.Guild, page: int = 0):
+        super().__init__(timeout=60)
+        self.embed = embed
+        self.guild = guild
+        self.page = page
+        self.channels_per_page = 25
+
+        # Bereken begin/eind van de slice
+        start = page * self.channels_per_page
+        end = start + self.channels_per_page
+
+        # Alleen kanalen waar de bot berichten mag sturen
+        channel_options = [
+            SelectOption(label=ch.name, value=str(ch.id))
+            for ch in guild.text_channels
+            if ch.permissions_for(guild.me).send_messages
+        ][start:end]
+
+        # Dropdown toevoegen
+        self.add_item(ChannelDropdown(channel_options, embed, guild))
+
+        # Navigatieknoppen (alleen als nodig)
+        total_pages = (len(guild.text_channels) - 1) // self.channels_per_page
+        if page > 0:
+            self.add_item(PreviousPageButton(embed, guild, page - 1))
+        if page < total_pages:
+            self.add_item(NextPageButton(embed, guild, page + 1))
+
+
+class ChannelDropdown(discord.ui.Select):
+    def __init__(self, options, embed, guild):
+        super().__init__(placeholder="Kies een kanaal", options=options)
+        self.embed = embed
+        self.guild = guild
+
+    async def callback(self, interaction: discord.Interaction):
+        kanaal_id = int(self.values[0])
+        kanaal = self.guild.get_channel(kanaal_id)
+        if kanaal is None:
+            await interaction.response.edit_message(content="Kanaal niet gevonden.", view=None)
+            return
+        await kanaal.send(embed=self.embed)
+        await interaction.response.edit_message(content=f"✅ Embed gestuurd naar {kanaal.mention}", view=None)
+
+
+class PreviousPageButton(discord.ui.Button):
+    def __init__(self, embed, guild, new_page):
+        super().__init__(style=discord.ButtonStyle.secondary, label="⬅️ Vorige")
+        self.embed = embed
+        self.guild = guild
+        self.new_page = new_page
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.edit_message(
+            content="Kies een kanaal voor je embed:",
+            view=ChannelSelectView(self.embed, self.guild, self.new_page)
+        )
+
+
+class NextPageButton(discord.ui.Button):
+    def __init__(self, embed, guild, new_page):
+        super().__init__(style=discord.ButtonStyle.secondary, label="Volgende ➡️")
+        self.embed = embed
+        self.guild = guild
+        self.new_page = new_page
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.edit_message(
+            content="Kies een kanaal voor je embed:",
+            view=ChannelSelectView(self.embed, self.guild, self.new_page)
+        )
+
+
+# ------------------- Slash Command -------------------
 @bot.tree.command(name="embed", description="Maak een embed via formulier", guild=discord.Object(id=GUILD_ID))
 async def embed_cmd(interaction: discord.Interaction):
     allowed_roles = {
-        1149718619207512119
+        1149718619207512119,
     }
     if not any(r.id in allowed_roles for r in interaction.user.roles):
         await interaction.response.send_message("❌ Je hebt geen toegang tot dit commando.", ephemeral=True)
         return
     await interaction.response.send_modal(EmbedModal())
+        
+
   
 class RoleEmbedModal(Modal, title="Maak een Role Embed"):
     titel = TextInput(
